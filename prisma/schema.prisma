@@ -192,6 +192,8 @@ model Shelldue {
   userId              String
   executing           Boolean               @default(false)
   shelldueType        ShelldueType          @default(condition)
+  runtimeEnd          DateTime?             @db.Time(6)
+  runtimeStart        DateTime?             @db.Time(6)
   User                User                  @relation(fields: [userId], references: [id])
   ShellduesOnStations ShellduesOnStations[]
 }
