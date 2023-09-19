@@ -4,15 +4,8 @@ const db = new PrismaClient();
 const http = require('http')
 var cron = require('node-cron');
 cron.schedule('* * * * *',async () => {
+    findAllTimeShelldue()
     findOutdatedShelldues()
-    const currentTime = await getCurrentTime()
-    const allTimeShelldues = await findAllTimeShelldue(currentTime)
-    //console.log(allTimeShelldues)
-    for (let i = 0; i < allTimeShelldues.length; i++) {
-        const shelldue = allTimeShelldues[i]
-        //console.log(shelldue)
-        await postSets(shelldue)
-    }
 });
 
 async function getCurrentTime(){
@@ -23,30 +16,34 @@ async function getCurrentTime(){
     currentTime.setMonth(0)
     currentTime.setDate(1)
     currentTime.setHours(currentTime.getHours()+5)
+    currentTime.setMinutes(currentTime.getMinutes()+1)
     return currentTime
 }
 
 
 async function findAllTimeShelldue(){
     const currentTime = await getCurrentTime()
-    return await db.Shelldue.findMany({
+    const allTimeShelldues = await db.Shelldue.findMany({
         where:{
             shelldueType:"time",
             runtimeStart:{
                 lte: currentTime
             },
             runtimeEnd:{
-                gte: currentTime
+                gt: currentTime
             },
             executing: false
             //runtime: currentTime
         }
     })
+    for (let i = 0; i < allTimeShelldues.length; i++) {
+        postSets(allTimeShelldues[i])
+    }
 }
 
 async function findOutdatedShelldues(){
     const currentTime = await getCurrentTime()
-    const pastShelldue = await db.Shelldue.updateMany({
+    const pastShelldue = await db.Shelldue.findMany({
         where:{
             shelldueType:"time",
             runtimeEnd:{
@@ -54,16 +51,14 @@ async function findOutdatedShelldues(){
             },
             executing: true
             //runtime: currentTime
-        },
-        data:{
-            executing:false
         }
-
     })
+    for (let i = 0; i < pastShelldue.length; i++) {
+        postSets(pastShelldue[i])
+    }
 }
 
 async function postSets(shelldue){
-    console.log(shelldue)
     for (let i = 0; i < shelldue.shelldueScript.actions.set.length; i++) {
         const set = shelldue.shelldueScript.actions.set[i];
             const sensor = await db.sensor.findFirst({
@@ -89,8 +84,8 @@ async function postSets(shelldue){
                 })
               } 
               //console.log(postData)
-              if(set.executing == shelldue.executing){
-                //console.log(postData.body)
+              if(set.executing != shelldue.executing){
+                console.log(postData.body)
                 fetch(`http://${process.env.SHELLDUE_HOST}:${process.env.SHELLDUE_PORT}/`, postData)
                 .then(async (res) => {
                   console.log(await res.json())
@@ -103,7 +98,7 @@ async function postSets(shelldue){
             id: shelldue.id
         },
         data:{
-            executing: true
+            executing: !shelldue.executing
         }
     })
 }
