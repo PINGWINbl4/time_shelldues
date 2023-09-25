@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { timeLog } = require('console');
 
 const db = new PrismaClient();
 const http = require('http')
@@ -87,6 +88,13 @@ async function postSets(shelldue){
               if(set.executing != shelldue.executing){
                 console.log(postData.body)
                 fetch(`http://${process.env.SHELLDUE_HOST}:${process.env.SHELLDUE_PORT}/`, postData)
+                const toLog = {
+                    userId: shelldue.userId,
+                    sensorId: sensor.id,
+                    stationId: station.id,
+                    shelldueId: shelldue.id
+                }
+                writeToLog(toLog, 1)
                 .then(async (res) => {
                   console.log(await res.json())
                 })
@@ -101,4 +109,20 @@ async function postSets(shelldue){
             executing: !shelldue.executing
         }
     })
+}
+
+
+async function writeToLog(data, code){
+
+    const logCode = await db.EventCode.findUnique({
+        where:{
+            code: code
+        }
+    })
+
+    data.codeId = logCode.id
+    const eLog = await db.EventLog.create({
+        data:data
+    })
+    return eLog
 }
