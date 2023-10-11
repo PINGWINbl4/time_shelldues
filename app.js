@@ -112,7 +112,7 @@ async function postSets(shelldue){
 }
 
 
-async function writeToLog(data, code){
+/*async function writeToLog(data, code){
 
     const logCode = await db.EventCode.findUnique({
         where:{
@@ -125,4 +125,4 @@ async function writeToLog(data, code){
         data:data
     })
     return eLog
-}
+}*/
