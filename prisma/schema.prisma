@@ -30,13 +30,14 @@ model Contract {
 }
 
 model Data {
-  id        String     @id @unique
-  value     Json
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @default(now())
-  sensorId  String
-  Sensor    Sensor     @relation(fields: [sensorId], references: [id], onDelete: Cascade)
-  EventLog  EventLog[]
+  id            String     @id @unique
+  value         Json
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @default(now())
+  sensorId      String
+  createdAtDate DateTime   @default(now()) @db.Date
+  Sensor        Sensor     @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+  EventLog      EventLog[]
 }
 
 model DefaultScripts {
@@ -60,6 +61,9 @@ model DeviceType {
   name               String               @db.VarChar(255)
   code               String?              @unique
   iconId             String?
+  category           deviceCategory?
+  frontView          Json?
+  commands           Json?
   DefaultScripts     DefaultScripts[]
   Icon               Icon?                @relation(fields: [iconId], references: [id])
   DeviceTypesAtGroup DeviceTypesAtGroup[]
@@ -85,25 +89,31 @@ model EventCode {
 }
 
 model EventLog {
-  id        String    @id @unique
-  userId    String
-  sensorId  String?
-  stationId String?
-  dataId    String?
-  codeId    String
-  EventCode EventCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
-  Data      Data?     @relation(fields: [dataId], references: [id], onDelete: Cascade)
-  Sensor    Sensor?   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
-  Station   Station?  @relation(fields: [stationId], references: [id], onDelete: Cascade)
-  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @unique @default(uuid())
+  userId     String
+  sensorId   String?
+  stationId  String?
+  dataId     String?
+  codeId     String
+  shelldueId String?
+  createdAt  DateTime  @default(now())
+  message    String?   @db.VarChar(4096)
+  EventCode  EventCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  Data       Data?     @relation(fields: [dataId], references: [id], onDelete: Cascade)
+  Sensor     Sensor?   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+  Shelldue   Shelldue? @relation(fields: [shelldueId], references: [id], onDelete: Cascade)
+  Station    Station?  @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Icon {
   id             String           @id @unique
   name           String
   url            String
+  userId         String?
   DeviceGroup    DeviceGroup[]
   DeviceType     DeviceType[]
+  User           User?            @relation(fields: [userId], references: [id])
   SensorSettings SensorSettings[]
 }
 
@@ -194,6 +204,9 @@ model Shelldue {
   shelldueType        ShelldueType          @default(condition)
   runtimeEnd          DateTime?             @db.Time(6)
   runtimeStart        DateTime?             @db.Time(6)
+  success             Boolean[]
+  lastSuccess         Boolean[]
+  EventLog            EventLog[]
   User                User                  @relation(fields: [userId], references: [id])
   ShellduesOnStations ShellduesOnStations[]
 }
@@ -261,6 +274,7 @@ model User {
   cityId           String
   Contract         Contract[]
   EventLog         EventLog[]
+  Icon             Icon[]
   Metric           Metric[]
   RefreshToken     RefreshToken[]
   Rooms            Rooms[]
@@ -321,4 +335,11 @@ enum UserRole {
 enum UserStatus {
   active
   inactive
+}
+
+enum deviceCategory {
+  State
+  Action
+  K_Telecom
+  Value
 }

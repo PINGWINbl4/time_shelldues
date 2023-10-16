@@ -65,6 +65,9 @@ async function postSets(shelldue){
             const sensor = await db.sensor.findFirst({
                 where:{
                   elementId: set.elementId
+                },
+                include:{
+                    SensorSettings:true
                 }
               })
               const station = await db.station.findFirst({
@@ -88,17 +91,20 @@ async function postSets(shelldue){
               if(set.executing != shelldue.executing){
                 console.log(postData.body)
                 fetch(`http://${process.env.SHELLDUE_HOST}:${process.env.SHELLDUE_PORT}/`, postData)
-                /*const toLog = {
+                .then(async (res) => {
+                    console.log(await res.json())
+                })
+                .catch(err => {throw new Error(err)})
+                const toLog = {
                     userId: shelldue.userId,
                     sensorId: sensor.id,
                     stationId: station.id,
-                    shelldueId: shelldue.id
+                    shelldueId: shelldue.id,
+                    sensorName: sensor.SensorSettings.name,
+                    shelldueName: shelldue.name
                 }
-                writeToLog(toLog, 1)*/
-                .then(async (res) => {
-                  console.log(await res.json())
-                })
-                .catch(err => {throw new Error(err)})
+                console.log(toLog)
+                set.executing? writeToLog(toLog, 1):writeToLog(toLog, 3)
               }     
     }
     await db.Shelldue.update({
@@ -112,17 +118,28 @@ async function postSets(shelldue){
 }
 
 
-/*async function writeToLog(data, code){
+async function writeToLog(data, code){
 
     const logCode = await db.EventCode.findUnique({
         where:{
             code: code
         }
     })
-
+    data.message = logCode.description
+    if (logCode.description.indexOf('{sensorName}') && data.sensorName !== undefined){
+        data.message = logCode.description.replace('{sensorName}', data.sensorName);
+        logCode.description = data.message
+        delete data.sensorName
+    }
+    if (logCode.description.indexOf('{shelldueName}') && data.shelldueName !== undefined){
+        data.message = logCode.description.replace('{shelldueName}', data.shelldueName);
+        logCode.description = data.message
+        delete data.shelldueName
+    }
     data.codeId = logCode.id
+    console.log(data)
     const eLog = await db.EventLog.create({
         data:data
     })
     return eLog
-}*/
+}
