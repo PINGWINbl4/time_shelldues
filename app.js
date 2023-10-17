@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
-const { timeLog } = require('console');
-
+const { postEmailMessage,
+        postPushMessage } = require('./notification')
 const db = new PrismaClient();
 const http = require('http')
 var cron = require('node-cron');
@@ -117,6 +117,27 @@ async function postSets(shelldue){
     })
 }
 
+async function postNotification(){
+    if(Object.keys(action).includes("notification")){
+        for (let i = 0; i < action.notification.length; i++) {
+            const body = action.notification[i].notificationMessage
+            console.log(stationsShelldue)
+            if(action.notification[i].executing == stationsShelldue.executing){
+                switch (action.notification[i].messageType){
+                    case "push":
+                        const title = stationsShelldue.name
+                        postPushMessage(user, title, body)
+                        break;
+                    case "email":
+                        postEmailMessage(user, body)
+                        break
+                    default:
+                        throw new Error(`Invalid notification action. Expected push or email. Geted ${action.notification.messageType}`);
+                }
+            }
+        }
+    }
+}
 
 async function writeToLog(data, code){
 
