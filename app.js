@@ -56,6 +56,7 @@ async function findOutdatedShelldues(){
     })
     for (let i = 0; i < pastShelldue.length; i++) {
         postSets(pastShelldue[i])
+        postNotification
     }
 }
 
@@ -140,27 +141,23 @@ async function postNotification(){
 }
 
 async function writeToLog(data, code){
-
-    const logCode = await db.EventCode.findUnique({
-        where:{
-            code: code
-        }
-    })
-    data.message = logCode.description
-    if (logCode.description.indexOf('{sensorName}') && data.sensorName !== undefined){
-        data.message = logCode.description.replace('{sensorName}', data.sensorName);
-        logCode.description = data.message
-        delete data.sensorName
+    try{
+      const url = `http://${process.env.LOGGER_HOST || "localhost"}:${process.env.LOGGER_PORT || "5282"}/${code}` 
+      const postData = {
+        method: "POST",
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          data: data
+        })
+      }
+      await fetch(url, postData)
+      .then(console.log(`${data.shelldueName} change status. Log req sended.\n User with id:${data.userId} can see it soon`))
+      .catch(err => {throw new Error(err)})
     }
-    if (logCode.description.indexOf('{shelldueName}') && data.shelldueName !== undefined){
-        data.message = logCode.description.replace('{shelldueName}', data.shelldueName);
-        logCode.description = data.message
-        delete data.shelldueName
+    catch(err){
+      console.log(err)
     }
-    data.codeId = logCode.id
-    console.log(data)
-    const eLog = await db.EventLog.create({
-        data:data
-    })
-    return eLog
 }
