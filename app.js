@@ -5,8 +5,46 @@ const db = new PrismaClient();
 const http = require('http')
 var cron = require('node-cron');
 cron.schedule('* * * * *',async () => {
-    findAllTimeShelldue()
-    findOutdatedShelldues()
+    try{
+        findAllTimeShelldue()
+        findOutdatedShelldues()
+    }
+    catch(err){
+        console.log(err)
+    }
+});
+
+cron.schedule('* * * * *',async () => {
+    try {
+        const date = new Date()
+        cities = await db.city.findMany({
+            skip: date.getMinutes()*60,
+            take: 60
+        })
+        console.log(cities)
+        cities.forEach(async city => {
+            const lat = city.lat
+            const lon = city.lon
+            const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.WEATHER_KEY_1}`
+            if(lat & lon){
+                let weatherReq = await fetch(url).then().catch((err)=>console.log(err))
+                const weatherData = await weatherReq.json()
+                await db.weather.create({
+                    data:{
+                        cityId:city.id,
+                        weatherData:{
+                            temp: weatherData.main.temp,
+                            pressure: weatherData.main.pressure,
+                            humidity: weatherData.main.humidity,
+                            clouds: weatherData.clouds.all
+                        }
+                    }
+                })
+            }
+        });
+    } catch (error) {
+        
+    }
 });
 
 async function getCurrentTime(){
@@ -33,7 +71,8 @@ async function findAllTimeShelldue(){
             runtimeEnd:{
                 gt: currentTime
             },
-            executing: false
+            executing: false,
+            active: true
             //runtime: currentTime
         }
     })
@@ -55,67 +94,76 @@ async function findOutdatedShelldues(){
         }
     })
     for (let i = 0; i < pastShelldue.length; i++) {
-        postSets(pastShelldue[i])
-        postNotification
+        try{
+            postSets(pastShelldue[i])
+            postNotification()
+        }
+        catch(err){
+            console.log(err)
+        }
     }
 }
 
 async function postSets(shelldue){
-    for (let i = 0; i < shelldue.shelldueScript.actions.set.length; i++) {
-        const set = shelldue.shelldueScript.actions.set[i];
-            const sensor = await db.sensor.findFirst({
-                where:{
-                  elementId: set.elementId
-                },
-                include:{
-                    SensorSettings:true
-                }
-              })
-              const station = await db.station.findFirst({
-                where:{
-                  id: sensor.stationId
-                }
-              })
-              const topic = `${shelldue.userId}/${station.gatewayId}/${sensor.elementId}/set`
-              const postData = {
-                method: "POST",
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  topic: topic,
-                  shelldueScript: set
-                })
-              } 
-              //console.log(postData)
-              if(set.executing != shelldue.executing){
-                console.log(postData.body)
-                fetch(`http://${process.env.SHELLDUE_HOST}:${process.env.SHELLDUE_PORT}/`, postData)
-                .then(async (res) => {
-                    console.log(await res.json())
-                })
-                .catch(err => {throw new Error(err)})
-                const toLog = {
-                    userId: shelldue.userId,
-                    sensorId: sensor.id,
-                    stationId: station.id,
-                    shelldueId: shelldue.id,
-                    sensorName: sensor.SensorSettings.name,
-                    shelldueName: shelldue.name
-                }
-                console.log(toLog)
-                set.executing? writeToLog(toLog, 1):writeToLog(toLog, 3)
-              }     
-    }
-    await db.Shelldue.update({
-        where:{
-            id: shelldue.id
-        },
-        data:{
-            executing: !shelldue.executing
+    try {  
+        for (let i = 0; i < shelldue.shelldueScript.actions.set.length; i++) {
+            const set = shelldue.shelldueScript.actions.set[i];
+                const sensor = await db.sensor.findFirst({
+                    where:{
+                      elementId: set.elementId
+                    },
+                    include:{
+                        SensorSettings:true
+                    }
+                  })
+                  const station = await db.station.findFirst({
+                    where:{
+                      id: sensor.stationId
+                    }
+                  })
+                  const topic = `${shelldue.userId}/${station.gatewayId}/${sensor.elementId}/set`
+                  const postData = {
+                    method: "POST",
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      topic: topic,
+                      shelldueScript: set
+                    })
+                  } 
+                  //console.log(postData)
+                  if(set.executing != shelldue.executing){
+                    console.log(postData.body)
+                    fetch(`http://${process.env.SHELLDUE_HOST}:${process.env.SHELLDUE_PORT}/`, postData)
+                    .then(async (res) => {
+                        console.log(await res.json())
+                    })
+                    .catch(err => {throw new Error(err)})
+                    const toLog = {
+                        userId: shelldue.userId,
+                        sensorId: sensor.id,
+                        stationId: station.id,
+                        shelldueId: shelldue.id,
+                        sensorName: sensor.SensorSettings.name,
+                        shelldueName: shelldue.name
+                    }
+                    console.log(toLog)
+                    set.executing? writeToLog(toLog, 1):writeToLog(toLog, 3)
+                  }     
         }
-    })
+        await db.Shelldue.update({
+            where:{
+                id: shelldue.id
+            },
+            data:{
+                executing: !shelldue.executing
+            }
+        })
+    } catch (error) {
+        console.log(error)
+    }
 }
 
 async function postNotification(){

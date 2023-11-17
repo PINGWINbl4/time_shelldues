@@ -17,8 +17,11 @@ model City {
   id              String            @id @unique
   name            String            @db.VarChar(99)
   UTC             Int               @default(5) @db.SmallInt
+  lat             Float?
+  lon             Float?
   StationSettings StationSettings[]
   User            User[]
+  Weather         Weather[]
 }
 
 model Contract {
@@ -41,11 +44,10 @@ model Data {
 }
 
 model DefaultScripts {
-  id          String     @id @unique
-  deviceId    String
-  script      Json
-  description String?
-  DeviceType  DeviceType @relation(fields: [deviceId], references: [id])
+  id                          String                        @id @unique
+  script                      Json
+  description                 String?
+  DeviceTypesAtDefaultScripts DeviceTypesAtDefaultScripts[]
 }
 
 model DeviceGroup {
@@ -57,19 +59,20 @@ model DeviceGroup {
 }
 
 model DeviceType {
-  id                 String               @id @unique
-  name               String               @db.VarChar(255)
-  code               String?              @unique
-  iconId             String?
-  category           deviceCategory?
-  frontView          Json?
-  commands           Json?
-  DefaultScripts     DefaultScripts[]
-  Icon               Icon?                @relation(fields: [iconId], references: [id])
-  DeviceTypesAtGroup DeviceTypesAtGroup[]
-  Sensor             Sensor[]
-  Station            Station[]
-  Version            Version[]
+  id                          String                        @id @unique
+  name                        String                        @db.VarChar(255)
+  code                        String?                       @unique
+  iconId                      String?
+  category                    deviceCategory?
+  frontView                   Json?
+  commands                    Json?
+  majorFields                 String[]
+  Icon                        Icon?                         @relation(fields: [iconId], references: [id])
+  DeviceTypesAtDefaultScripts DeviceTypesAtDefaultScripts[]
+  DeviceTypesAtGroup          DeviceTypesAtGroup[]
+  Sensor                      Sensor[]
+  Station                     Station[]
+  Version                     Version[]
 }
 
 model DeviceTypesAtGroup {
@@ -150,6 +153,8 @@ model Rooms {
   userId          String
   createdAt       DateTime          @default(now())
   updatedAt       DateTime
+  housesId        String?
+  Houses          Houses?           @relation(fields: [housesId], references: [id], onDelete: Cascade)
   User            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   SensorSettings  SensorSettings[]
   StationSettings StationSettings[]
@@ -163,6 +168,8 @@ model Sensor {
   uptime         BigInt?
   deviceId       String
   stationId      String
+  linkquality    Int             @default(0)
+  deleted        Boolean         @default(false)
   Data           Data[]
   EventLog       EventLog[]
   DeviceType     DeviceType      @relation(fields: [deviceId], references: [id])
@@ -206,8 +213,12 @@ model Shelldue {
   runtimeStart        DateTime?             @db.Time(6)
   success             Boolean[]
   lastSuccess         Boolean[]
+  duration            BigInt?
+  stage               Int                   @default(0)
+  activeDays          Int[]
   EventLog            EventLog[]
   User                User                  @relation(fields: [userId], references: [id])
+  ShellduesChainLink  ShellduesChainLink[]
   ShellduesOnStations ShellduesOnStations[]
 }
 
@@ -250,38 +261,41 @@ model StationSettings {
 }
 
 model User {
-  id               String             @id @unique
-  name             String             @db.VarChar(255)
-  surname          String             @db.VarChar(255)
-  patronymic       String             @db.VarChar(255)
-  email            String             @unique
-  phone            BigInt
-  password         String
-  verified         Boolean            @default(false)
-  status           UserStatus
-  client           UserClient
-  role             UserRole
-  auto_updating    Boolean            @default(true)
-  auto_paying      Boolean            @default(true)
-  get_push         Boolean            @default(true)
-  get_email        Boolean            @default(true)
-  hash_rst         String?            @db.VarChar(255)
-  hash_vrf         String?            @db.VarChar(255)
-  remainingTries   Int                @default(0)
-  token            String[]
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  cityId           String
-  Contract         Contract[]
-  EventLog         EventLog[]
-  Icon             Icon[]
-  Metric           Metric[]
-  RefreshToken     RefreshToken[]
-  Rooms            Rooms[]
-  Shelldue         Shelldue[]
-  Station          Station[]
-  City             City               @relation(fields: [cityId], references: [id])
-  UserToUserGroups UserToUserGroups[]
+  id                  String             @id @unique
+  name                String             @db.VarChar(255)
+  surname             String             @db.VarChar(255)
+  patronymic          String             @db.VarChar(255)
+  email               String             @unique
+  phone               BigInt
+  password            String
+  verified            Boolean            @default(false)
+  status              UserStatus
+  client              UserClient
+  role                UserRole
+  auto_updating       Boolean            @default(true)
+  auto_paying         Boolean            @default(true)
+  get_push            Boolean            @default(true)
+  get_email           Boolean            @default(true)
+  hash_rst            String?            @db.VarChar(255)
+  hash_vrf            String?            @db.VarChar(255)
+  remainingTries      Int                @default(0)
+  token               String[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime
+  cityId              String
+  permissionsIssued   Json?
+  permissionsReceived Json?
+  Contract            Contract[]
+  EventLog            EventLog[]
+  Icon                Icon[]
+  Metric              Metric[]
+  RefreshToken        RefreshToken[]
+  Rooms               Rooms[]
+  Shelldue            Shelldue[]
+  Station             Station[]
+  City                City               @relation(fields: [cityId], references: [id])
+  UserToUserGroups    UserToUserGroups[]
+  UsersAtHouses       UsersAtHouses[]
 }
 
 model UserGroups {
@@ -310,6 +324,47 @@ model Version {
   SensorSettings  SensorSettings[]
   StationSettings StationSettings[]
   DeviceType      DeviceType        @relation(fields: [deviceId], references: [id])
+}
+
+model DeviceTypesAtDefaultScripts {
+  id              String         @id @unique
+  deviceTypeId    String
+  defaultScriptId String
+  DefaultScripts  DefaultScripts @relation(fields: [defaultScriptId], references: [id])
+  DeviceType      DeviceType     @relation(fields: [deviceTypeId], references: [id])
+}
+
+model Houses {
+  id            String          @id @unique
+  name          String
+  Rooms         Rooms[]
+  UsersAtHouses UsersAtHouses[]
+}
+
+model ShellduesChainLink {
+  id         String   @id @unique
+  name       String
+  shelldueId String
+  number     Int
+  action     Json
+  Shelldue   Shelldue @relation(fields: [shelldueId], references: [id], onDelete: Cascade)
+}
+
+model UsersAtHouses {
+  userId   String
+  housesId String
+  admin    Boolean @default(false)
+  Houses   Houses  @relation(fields: [housesId], references: [id], onDelete: Cascade)
+  User     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([housesId, userId])
+}
+
+model Weather {
+  id          String @id @unique @default(uuid())
+  weatherData Json
+  cityId      String
+  City        City   @relation(fields: [cityId], references: [id])
 }
 
 enum ShelldueType {
@@ -342,4 +397,7 @@ enum deviceCategory {
   Action
   K_Telecom
   Value
+  Teremok
+  SmartBulb
+  Thermostat
 }
