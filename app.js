@@ -33,7 +33,7 @@ cron.schedule('* * * * *',async () => {
                     data:{
                         cityId:city.id,
                         weatherData:{
-                            temp: weatherData.main.temp,
+                            temp: weatherData.main.temp - 273.15,
                             pressure: weatherData.main.pressure,
                             humidity: weatherData.main.humidity,
                             clouds: weatherData.clouds.all
