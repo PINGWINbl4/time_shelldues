@@ -18,7 +18,7 @@ cron.schedule('* * * * *',async () => {
     try {
         const date = new Date()
         cities = await db.city.findMany({
-            skip: date.getMinutes(),
+            skip: date.getMinutes()*60,
             take: 60
         })
         console.log(cities)
