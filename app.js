@@ -18,7 +18,7 @@ cron.schedule('* * * * *',async () => {
     try {
         const date = new Date()
         cities = await db.city.findMany({
-            skip: date.getMinutes()*60,
+            skip: date.getMinutes(),
             take: 60
         })
         console.log(cities)
@@ -26,6 +26,7 @@ cron.schedule('* * * * *',async () => {
             const lat = city.lat
             const lon = city.lon
             const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.WEATHER_KEY_1}`
+            console.log(url)
             if(lat & lon){
                 let weatherReq = await fetch(url).then().catch((err)=>console.log(err))
                 const weatherData = await weatherReq.json()
@@ -33,7 +34,7 @@ cron.schedule('* * * * *',async () => {
                     data:{
                         cityId:city.id,
                         weatherData:{
-                            temp: weatherData.main.temp - 273.15,
+                            temp: (weatherData.main.temp - 273).toFixed(1),
                             pressure: weatherData.main.pressure,
                             humidity: weatherData.main.humidity,
                             clouds: weatherData.clouds.all
