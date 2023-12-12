@@ -286,8 +286,8 @@ async function findOnlineSensors(){
                     online:true
                 }
             })
+            console.log(sensor)
         })
-        console.log(sensor)
     } 
     catch (error) {
         console.log(error)
