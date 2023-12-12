@@ -262,6 +262,7 @@ async function findOnlineSensors(){
             DeviceType: true
         }
     })
+    console.log(allSensors)
     allSensors.forEach(async sensor => {
         const dateCheck = new Date()
         dateCheck.setMinutes(dateCheck.getMinutes()-sensor.DeviceType.sleepTime)
