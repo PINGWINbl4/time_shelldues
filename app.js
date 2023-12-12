@@ -4,7 +4,7 @@ const { postEmailMessage,
 const db = new PrismaClient();
 const http = require('http')
 var cron = require('node-cron');
-cron.schedule('* * * * *',async () => {
+cron.schedule('0,15,30,45 * * * *',async () => {
     try{
         findAllTimeShelldue()
         findOutdatedShelldues()
@@ -13,6 +13,13 @@ cron.schedule('* * * * *',async () => {
         console.log(err)
     }
 });
+
+cron.schedule('* * * * *', async() =>{
+    findOfflineSensors(),
+    findOnlineSensors()
+})
+
+
 
 cron.schedule('* * * * *',async () => {
     try {
@@ -26,7 +33,6 @@ cron.schedule('* * * * *',async () => {
             const lat = city.lat
             const lon = city.lon
             const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.WEATHER_KEY_1}`
-            console.log(url)
             if(lat & lon){
                 let weatherReq = await fetch(url).then().catch((err)=>console.log(err))
                 const weatherData = await weatherReq.json()
@@ -44,7 +50,7 @@ cron.schedule('* * * * *',async () => {
             }
         });
     } catch (error) {
-        
+        console.log(error)
     }
 });
 
@@ -209,4 +215,70 @@ async function writeToLog(data, code){
     catch(err){
       console.log(err)
     }
+}
+
+async function findOfflineSensors(){
+    const allSensors = await db.sensor.findMany({
+        where:{
+            online:true
+        },
+        include:{
+            Data:{
+                take: 1
+            },
+            DeviceType: true
+        }
+    })
+    allSensors.forEach(async sensor => {
+        const dateCheck = new Date()
+        dateCheck.setMinutes(dateCheck.getMinutes()-sensor.DeviceType.sleepTime)
+        await db.sensor.update({
+            where:{
+                id: sensor.id,
+                Data:{
+                    some:{
+                        createdAt:{
+                            lt: dateCheck
+                        }
+                    }
+                }
+            },
+            data:{
+                online:false
+            }
+        })
+    })
+}
+
+async function findOnlineSensors(){
+    const allSensors = await db.sensor.findMany({
+        where:{
+            online:false
+        },
+        include:{
+            Data:{
+                take: 1
+            },
+            DeviceType: true
+        }
+    })
+    allSensors.forEach(async sensor => {
+        const dateCheck = new Date()
+        dateCheck.setMinutes(dateCheck.getMinutes()-sensor.DeviceType.sleepTime)
+        await db.sensor.update({
+            where:{
+                id: sensor.id,
+                Data:{
+                    some:{
+                        createdAt:{
+                            gt: dateCheck
+                        }
+                    }
+                }
+            },
+            data:{
+                online:true
+            }
+        })
+    })
 }

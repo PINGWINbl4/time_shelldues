@@ -19,6 +19,7 @@ model City {
   UTC             Int               @default(5) @db.SmallInt
   lat             Float?
   lon             Float?
+  Houses          Houses[]
   StationSettings StationSettings[]
   User            User[]
   Weather         Weather[]
@@ -47,6 +48,7 @@ model DefaultScripts {
   id                          String                        @id @unique
   script                      Json
   description                 String?
+  name                        String?
   DeviceTypesAtDefaultScripts DeviceTypesAtDefaultScripts[]
 }
 
@@ -67,6 +69,9 @@ model DeviceType {
   frontView                   Json?
   commands                    Json?
   majorFields                 String[]
+  fieldsToLog                 Json?
+  firstName                   String                        @default("Новый датчик")
+  sleepTime                   Int?                          @default(15)
   Icon                        Icon?                         @relation(fields: [iconId], references: [id])
   DeviceTypesAtDefaultScripts DeviceTypesAtDefaultScripts[]
   DeviceTypesAtGroup          DeviceTypesAtGroup[]
@@ -101,6 +106,7 @@ model EventLog {
   shelldueId String?
   createdAt  DateTime  @default(now())
   message    String?   @db.VarChar(4096)
+  visible    Boolean?  @default(true)
   EventCode  EventCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
   Data       Data?     @relation(fields: [dataId], references: [id], onDelete: Cascade)
   Sensor     Sensor?   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
@@ -170,6 +176,8 @@ model Sensor {
   stationId      String
   linkquality    Int             @default(0)
   deleted        Boolean         @default(false)
+  online         Boolean         @default(true)
+  statusDate     DateTime        @default(now())
   Data           Data[]
   EventLog       EventLog[]
   DeviceType     DeviceType      @relation(fields: [deviceId], references: [id])
@@ -193,6 +201,8 @@ model SensorSettings {
   versionId  String
   roomsId    String?
   iconId     String?
+  sendLogs   Boolean   @default(true)
+  sendPushes Boolean   @default(true)
   Icon       Icon?     @relation(fields: [iconId], references: [id])
   Rooms      Rooms?    @relation(fields: [roomsId], references: [id], onDelete: Cascade)
   Sensor     Sensor    @relation(fields: [sensorId], references: [id], onDelete: Cascade)
@@ -287,6 +297,7 @@ model User {
   permissionsReceived Json?
   Contract            Contract[]
   EventLog            EventLog[]
+  FeedbackReqorts     FeedbackReqorts[]
   Icon                Icon[]
   Metric              Metric[]
   RefreshToken        RefreshToken[]
@@ -330,13 +341,15 @@ model DeviceTypesAtDefaultScripts {
   id              String         @id @unique
   deviceTypeId    String
   defaultScriptId String
-  DefaultScripts  DefaultScripts @relation(fields: [defaultScriptId], references: [id])
-  DeviceType      DeviceType     @relation(fields: [deviceTypeId], references: [id])
+  DefaultScripts  DefaultScripts @relation(fields: [defaultScriptId], references: [id], onDelete: Cascade)
+  DeviceType      DeviceType     @relation(fields: [deviceTypeId], references: [id], onDelete: Cascade)
 }
 
 model Houses {
   id            String          @id @unique
   name          String
+  cityId        String?
+  City          City?           @relation(fields: [cityId], references: [id], onDelete: Cascade)
   Rooms         Rooms[]
   UsersAtHouses UsersAtHouses[]
 }
@@ -361,10 +374,23 @@ model UsersAtHouses {
 }
 
 model Weather {
-  id          String @id @unique @default(uuid())
-  weatherData Json
-  cityId      String
-  City        City   @relation(fields: [cityId], references: [id])
+  id            String   @id @unique @default(uuid())
+  weatherData   Json
+  cityId        String
+  createdAtDate DateTime @default(now()) @db.Date
+  City          City     @relation(fields: [cityId], references: [id])
+}
+
+model FeedbackReqorts {
+  id      String @id @unique
+  title   String
+  message String
+  userId  String
+  User    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserSettings {
+  id String @id @unique
 }
 
 enum ShelldueType {
