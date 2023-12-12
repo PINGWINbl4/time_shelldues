@@ -4,7 +4,7 @@ const { postEmailMessage,
 const db = new PrismaClient();
 const http = require('http')
 var cron = require('node-cron');
-cron.schedule('(0,15,30,45) * * * *',async () => {
+cron.schedule('0/5 * * * *',async () => {
     try{
         findAllTimeShelldue()
         findOutdatedShelldues()
