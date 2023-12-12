@@ -218,68 +218,79 @@ async function writeToLog(data, code){
 }
 
 async function findOfflineSensors(){
-    const allSensors = await db.sensor.findMany({
-        where:{
-            online:true
-        },
-        include:{
-            Data:{
-                take: 1
-            },
-            DeviceType: true
-        }
-    })
-    allSensors.forEach(async sensor => {
-        const dateCheck = new Date()
-        dateCheck.setMinutes(dateCheck.getMinutes()-sensor.DeviceType.sleepTime)
-        await db.sensor.update({
+    try {
+        const allSensors = await db.sensor.findMany({
             where:{
-                id: sensor.id,
-                Data:{
-                    some:{
-                        createdAt:{
-                            lt: dateCheck
-                        }
-                    }
-                }
+                online:true
             },
-            data:{
-                online:false
+            include:{
+                Data:{
+                    take: 1
+                },
+                DeviceType: true
             }
         })
-    })
+        allSensors.forEach(async sensor => {
+            const dateCheck = new Date()
+            dateCheck.setMinutes(dateCheck.getMinutes()-sensor.DeviceType.sleepTime)
+            await db.sensor.update({
+                where:{
+                    id: sensor.id,
+                    Data:{
+                        some:{
+                            createdAt:{
+                                lt: dateCheck
+                            }
+                        }
+                    }
+                },
+                data:{
+                    online:false
+                }
+            })
+        })
+    } catch (error) {
+        console.log(error)
+    }
+    
 }
 
 async function findOnlineSensors(){
-    const allSensors = await db.sensor.findMany({
-        where:{
-            online:false
-        },
-        include:{
-            Data:{
-                take: 1
-            },
-            DeviceType: true
-        }
-    })
-    console.log(allSensors)
-    allSensors.forEach(async sensor => {
-        const dateCheck = new Date()
-        dateCheck.setMinutes(dateCheck.getMinutes()-sensor.DeviceType.sleepTime)
-        await db.sensor.update({
+    try {
+        const allSensors = await db.sensor.findMany({
             where:{
-                id: sensor.id,
-                Data:{
-                    some:{
-                        createdAt:{
-                            gt: dateCheck
-                        }
-                    }
-                }
+                online:false
             },
-            data:{
-                online:true
+            include:{
+                Data:{
+                    take: 1
+                },
+                DeviceType: true
             }
         })
-    })
+        console.log(allSensors)
+        allSensors.forEach(async sensor => {
+            const dateCheck = new Date()
+            dateCheck.setMinutes(dateCheck.getMinutes()-sensor.DeviceType.sleepTime)
+            await db.sensor.update({
+                where:{
+                    id: sensor.id,
+                    Data:{
+                        some:{
+                            createdAt:{
+                                gt: dateCheck
+                            }
+                        }
+                    }
+                },
+                data:{
+                    online:true
+                }
+            })
+        })
+    } 
+    catch (error) {
+        console.log(error)
+    }
+    
 }
